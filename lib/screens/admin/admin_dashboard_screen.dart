@@ -1,0 +1,263 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../../core/api_client.dart';
+import '../../core/theme.dart';
+import '../../providers/auth_provider.dart';
+
+class AdminDashboardScreen extends StatefulWidget {
+  const AdminDashboardScreen({super.key});
+  @override
+  State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+}
+
+class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  Map<String, dynamic>? _stats;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() { _loading = true; _error = null; });
+    final auth    = context.read<AuthProvider>();
+    final isSa    = auth.isSuperAdmin;
+    final endpoint = isSa ? '/api/super-admin/stats' : null;
+    if (endpoint == null) {
+      // Regular admin has no dedicated stats endpoint
+      setState(() { _stats = {}; _loading = false; });
+      return;
+    }
+    try {
+      final res = await ApiClient.instance.get(endpoint);
+      setState(() => _stats = res.data);
+    } catch (e) {
+      setState(() => _error = 'تعذر تحميل البيانات');
+    }
+    setState(() => _loading = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final auth   = context.watch<AuthProvider>();
+    final isSa   = auth.isSuperAdmin;
+
+    return Scaffold(
+      body: RefreshIndicator(
+        color: AppColors.darkGreen,
+        onRefresh: _load,
+        child: CustomScrollView(
+          slivers: [
+            // Header
+            SliverAppBar(
+              expandedHeight: 160,
+              pinned: true,
+              automaticallyImplyLeading: false,
+              backgroundColor: AppColors.darkGreen,
+              flexibleSpace: FlexibleSpaceBar(
+                background: Container(
+                  decoration: const BoxDecoration(gradient: AppColors.headerGradient),
+                  child: SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text(
+                            isSa ? 'لوحة المدير العام' : 'لوحة المشرف',
+                            style: GoogleFonts.tajawal(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            'مرحباً، ${auth.user?.firstName ?? ''} 👋',
+                            style: GoogleFonts.tajawal(fontSize: 14, color: AppColors.lightGreen),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                title: Text(
+                  isSa ? 'الإحصائيات' : 'لوحة التحكم',
+                  style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+
+            if (_loading)
+              const SliverFillRemaining(
+                child: Center(child: CircularProgressIndicator(color: AppColors.darkGreen)),
+              )
+            else if (_error != null)
+              SliverFillRemaining(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+                      const SizedBox(height: 12),
+                      Text(_error!, style: GoogleFonts.tajawal(color: AppColors.textMuted)),
+                      const SizedBox(height: 16),
+                      FilledButton(onPressed: _load, child: Text('إعادة المحاولة', style: GoogleFonts.tajawal())),
+                    ],
+                  ),
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.all(16),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    if (isSa) ..._buildSuperAdminContent() else ..._buildAdminContent(),
+                    const SizedBox(height: 24),
+                  ]),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildSuperAdminContent() {
+    final s = _stats ?? {};
+    // Support both nested and flat response shapes
+    final requests  = s['requests']  as Map? ?? {};
+    final users     = s['users']     as Map? ?? {};
+    final blogs     = s['blogs']     as Map? ?? {};
+    final visits    = s['visits']    as Map? ?? {};
+
+    return [
+      _SectionTitle('الطلبات'),
+      const SizedBox(height: 12),
+      _StatsGrid([
+        _StatCard(label: 'إجمالي الطلبات',    value: '${requests['total']    ?? s['total_requests']    ?? 0}', icon: Icons.inbox_rounded,           color: AppColors.primary),
+        _StatCard(label: 'قيد الانتظار',       value: '${requests['pending']  ?? s['pending_requests']  ?? 0}', icon: Icons.hourglass_empty_rounded,  color: AppColors.statusPending),
+        _StatCard(label: 'جارٍ المعالجة',      value: '${requests['in_progress'] ?? s['in_progress_requests'] ?? 0}', icon: Icons.sync_rounded,     color: AppColors.statusProgress),
+        _StatCard(label: 'تم الحل',             value: '${requests['resolved'] ?? s['resolved_requests'] ?? 0}', icon: Icons.check_circle_outline_rounded, color: AppColors.statusResolved),
+      ], index: 0),
+      const SizedBox(height: 20),
+      _SectionTitle('المستخدمون'),
+      const SizedBox(height: 12),
+      _StatsGrid([
+        _StatCard(label: 'المستخدمون',  value: '${users['total'] ?? s['total_users']  ?? 0}', icon: Icons.people_rounded,         color: AppColors.primary),
+        _StatCard(label: 'المشرفون',    value: '${users['admins'] ?? s['total_admins'] ?? 0}', icon: Icons.admin_panel_settings_rounded, color: AppColors.statusProgress),
+      ], index: 1, crossAxis: 2),
+      const SizedBox(height: 20),
+      _SectionTitle('المحتوى والزيارات'),
+      const SizedBox(height: 12),
+      _StatsGrid([
+        _StatCard(label: 'المقالات',               value: '${blogs['total']   ?? s['total_blogs']   ?? 0}', icon: Icons.article_rounded,   color: AppColors.peach),
+        _StatCard(label: 'زيارات آخر 30 يوماً',   value: '${visits['monthly'] ?? s['monthly_visits'] ?? s['page_visits_last_30_days'] ?? 0}', icon: Icons.bar_chart_rounded, color: AppColors.statusProgress),
+      ], index: 2, crossAxis: 2),
+    ];
+  }
+
+  List<Widget> _buildAdminContent() {
+    final s = _stats ?? {};
+    final assigned  = s['my_requests'] as Map? ?? {};
+    return [
+      _SectionTitle('طلباتي المسندة'),
+      const SizedBox(height: 12),
+      _StatsGrid([
+        _StatCard(label: 'إجمالي',        value: '${assigned['total']       ?? s['total']       ?? 0}', icon: Icons.inbox_rounded,               color: AppColors.primary),
+        _StatCard(label: 'جارٍ المعالجة', value: '${assigned['in_progress'] ?? s['in_progress'] ?? 0}', icon: Icons.sync_rounded,                color: AppColors.statusProgress),
+        _StatCard(label: 'تم الحل',        value: '${assigned['resolved']    ?? s['resolved']    ?? 0}', icon: Icons.check_circle_outline_rounded, color: AppColors.statusResolved),
+        _StatCard(label: 'مغلقة',          value: '${assigned['closed']      ?? s['closed']      ?? 0}', icon: Icons.lock_outline_rounded,         color: AppColors.statusClosed),
+      ], index: 0),
+    ];
+  }
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+class _SectionTitle extends StatelessWidget {
+  final String text;
+  const _SectionTitle(this.text);
+  @override
+  Widget build(BuildContext context) => Text(
+        text,
+        style: GoogleFonts.tajawal(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.darkGreen),
+        textAlign: TextAlign.right,
+      );
+}
+
+class _StatsGrid extends StatelessWidget {
+  final List<_StatCard> cards;
+  final int index;
+  final int crossAxis;
+  const _StatsGrid(this.cards, {required this.index, this.crossAxis = 2});
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.count(
+      crossAxisCount: crossAxis,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      childAspectRatio: 1.5,
+      children: cards,
+    )
+        .animate(delay: Duration(milliseconds: index * 100))
+        .fadeIn()
+        .slideY(begin: 0.15);
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+  const _StatCard({required this.label, required this.value, required this.icon, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: cardDecoration(radius: 16),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withAlpha(20),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              Text(
+                value,
+                style: GoogleFonts.tajawal(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.darkGreen,
+                ),
+              ),
+            ],
+          ),
+          Text(
+            label,
+            style: GoogleFonts.tajawal(fontSize: 12, color: AppColors.textMuted, fontWeight: FontWeight.w500),
+            textAlign: TextAlign.right,
+          ),
+        ],
+      ),
+    );
+  }
+}
