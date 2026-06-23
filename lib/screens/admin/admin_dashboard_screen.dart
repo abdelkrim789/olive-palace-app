@@ -130,35 +130,50 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   List<Widget> _buildSuperAdminContent() {
     final s = _stats ?? {};
-    // Support both nested and flat response shapes
-    final requests  = s['requests']  as Map? ?? {};
-    final users     = s['users']     as Map? ?? {};
-    final blogs     = s['blogs']     as Map? ?? {};
-    final visits    = s['visits']    as Map? ?? {};
+    // Backend shape: { request_stats: {pending,in_progress,resolved,closed},
+    //                  total_users, total_admins, total_blogs,
+    //                  visits: [int x30], recent_pending: [...] }
+    final rs         = s['request_stats'] as Map? ?? {};
+    final pending    = (rs['pending']     as num?)?.toInt() ?? 0;
+    final inProgress = (rs['in_progress'] as num?)?.toInt() ?? 0;
+    final resolved   = (rs['resolved']    as num?)?.toInt() ?? 0;
+    final closed     = (rs['closed']      as num?)?.toInt() ?? 0;
+    final totalReqs  = pending + inProgress + resolved + closed;
+
+    final visitsList = s['visits'] as List? ?? [];
+    final monthlyVisits = visitsList.fold<int>(0, (sum, v) => sum + ((v as num?)?.toInt() ?? 0));
+
+    final recentPending = (s['recent_pending'] as List? ?? [])
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
 
     return [
       _SectionTitle('الطلبات'),
       const SizedBox(height: 12),
       _StatsGrid([
-        _StatCard(label: 'إجمالي الطلبات',    value: '${requests['total']    ?? s['total_requests']    ?? 0}', icon: Icons.inbox_rounded,           color: AppColors.primary),
-        _StatCard(label: 'قيد الانتظار',       value: '${requests['pending']  ?? s['pending_requests']  ?? 0}', icon: Icons.hourglass_empty_rounded,  color: AppColors.statusPending),
-        _StatCard(label: 'جارٍ المعالجة',      value: '${requests['in_progress'] ?? s['in_progress_requests'] ?? 0}', icon: Icons.sync_rounded,     color: AppColors.statusProgress),
-        _StatCard(label: 'تم الحل',             value: '${requests['resolved'] ?? s['resolved_requests'] ?? 0}', icon: Icons.check_circle_outline_rounded, color: AppColors.statusResolved),
+        _StatCard(label: 'إجمالي الطلبات',   value: '$totalReqs',   icon: Icons.inbox_rounded,                color: AppColors.primary),
+        _StatCard(label: 'قيد الانتظار',      value: '$pending',     icon: Icons.hourglass_empty_rounded,      color: AppColors.statusPending),
+        _StatCard(label: 'جارٍ المعالجة',     value: '$inProgress',  icon: Icons.sync_rounded,                 color: AppColors.statusProgress),
+        _StatCard(label: 'تم الحل',            value: '$resolved',    icon: Icons.check_circle_outline_rounded, color: AppColors.statusResolved),
       ], index: 0),
       const SizedBox(height: 20),
-      _SectionTitle('المستخدمون'),
+      _SectionTitle('المستخدمون والمحتوى'),
       const SizedBox(height: 12),
       _StatsGrid([
-        _StatCard(label: 'المستخدمون',  value: '${users['total'] ?? s['total_users']  ?? 0}', icon: Icons.people_rounded,         color: AppColors.primary),
-        _StatCard(label: 'المشرفون',    value: '${users['admins'] ?? s['total_admins'] ?? 0}', icon: Icons.admin_panel_settings_rounded, color: AppColors.statusProgress),
-      ], index: 1, crossAxis: 2),
-      const SizedBox(height: 20),
-      _SectionTitle('المحتوى والزيارات'),
-      const SizedBox(height: 12),
-      _StatsGrid([
-        _StatCard(label: 'المقالات',               value: '${blogs['total']   ?? s['total_blogs']   ?? 0}', icon: Icons.article_rounded,   color: AppColors.peach),
-        _StatCard(label: 'زيارات آخر 30 يوماً',   value: '${visits['monthly'] ?? s['monthly_visits'] ?? s['page_visits_last_30_days'] ?? 0}', icon: Icons.bar_chart_rounded, color: AppColors.statusProgress),
-      ], index: 2, crossAxis: 2),
+        _StatCard(label: 'المستخدمون',          value: '${s['total_users']  ?? 0}', icon: Icons.people_rounded,               color: AppColors.primary),
+        _StatCard(label: 'المشرفون',             value: '${s['total_admins'] ?? 0}', icon: Icons.admin_panel_settings_rounded,  color: AppColors.statusProgress),
+        _StatCard(label: 'المقالات',             value: '${s['total_blogs']  ?? 0}', icon: Icons.article_rounded,               color: AppColors.peach),
+        _StatCard(label: 'زيارات 30 يوم',       value: '$monthlyVisits',            icon: Icons.bar_chart_rounded,             color: AppColors.statusProgress),
+      ], index: 1),
+      if (recentPending.isNotEmpty) ...[
+        const SizedBox(height: 20),
+        _SectionTitle('أحدث الطلبات المعلقة'),
+        const SizedBox(height: 12),
+        ...recentPending.asMap().entries.map((e) => Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: _RecentRequestTile(e.value, e.key),
+        )),
+      ],
     ];
   }
 
@@ -211,6 +226,55 @@ class _StatsGrid extends StatelessWidget {
         .animate(delay: Duration(milliseconds: index * 100))
         .fadeIn()
         .slideY(begin: 0.15);
+  }
+}
+
+class _RecentRequestTile extends StatelessWidget {
+  final Map<String, dynamic> req;
+  final int index;
+  const _RecentRequestTile(this.req, this.index);
+
+  @override
+  Widget build(BuildContext context) {
+    final user = req['user'] as Map? ?? {};
+    final firstName = user['first_name'] ?? '';
+    final lastName  = user['last_name']  ?? '';
+    final name = '$firstName $lastName'.trim();
+    return Container(
+      decoration: cardDecoration(radius: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: AppColors.beige,
+            child: Text(
+              name.isNotEmpty ? name[0].toUpperCase() : '?',
+              style: GoogleFonts.tajawal(fontWeight: FontWeight.w700, color: AppColors.darkGreen),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              name.isNotEmpty ? name : 'مستخدم',
+              style: GoogleFonts.tajawal(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.darkGreen),
+              textAlign: TextAlign.right,
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.statusPending.withAlpha(20),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              'معلق',
+              style: GoogleFonts.tajawal(fontSize: 11, color: AppColors.statusPending, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    ).animate(delay: Duration(milliseconds: index * 60)).fadeIn(duration: 350.ms).slideX(begin: 0.1);
   }
 }
 

@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
-import 'google_auth_screen.dart';
+import 'google_auth_screen.dart' show launchGoogleAuth;
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -30,14 +30,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _googleLogin() async {
     setState(() => _googleLoading = true);
-    final result = await Navigator.push<Map<String, dynamic>>(
-      context,
-      MaterialPageRoute(builder: (_) => const GoogleAuthScreen()),
-    );
+    final result = await launchGoogleAuth(context);
     if (!mounted) return;
     if (result != null) {
-      final auth = context.read<AuthProvider>();
-      await auth.loginWithGoogle(result['token'], result['user_type'] ?? 'web');
+      await context.read<AuthProvider>().loginWithGoogle(result['token']!, result['user_type']!);
     }
     setState(() => _googleLoading = false);
   }

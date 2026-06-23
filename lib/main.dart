@@ -5,8 +5,8 @@ import 'package:provider/provider.dart';
 
 import 'core/theme.dart';
 import 'providers/auth_provider.dart';
-import 'screens/auth/login_screen.dart';
 import 'screens/admin/admin_main_screen.dart';
+import 'screens/public/landing_screen.dart';
 import 'screens/user/main_screen.dart';
 
 void main() async {
@@ -59,7 +59,7 @@ class _Root extends StatelessWidget {
         AuthStatus.authenticated  => auth.isAdmin
             ? const AdminMainScreen()
             : const UserMainScreen(),
-        AuthStatus.unauthenticated => const LoginScreen(),
+        AuthStatus.unauthenticated => const LandingScreen(),
       },
     );
   }
@@ -77,16 +77,7 @@ class _SplashScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(20),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withAlpha(40), width: 2),
-                ),
-                child: const Icon(Icons.eco_rounded, size: 50, color: Colors.white),
-              ),
+              Image.asset('assets/images/logo.png', width: 120, height: 120, color: Colors.white),
               const SizedBox(height: 24),
               Text(
                 'Olive Palace',
