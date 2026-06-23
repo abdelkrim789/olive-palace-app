@@ -45,7 +45,7 @@ class _GoogleAuthScreenState extends State<GoogleAuthScreen> {
           _controller.runJavaScript(_interceptScript);
         },
       ))
-      ..loadRequest(Uri.parse('${ApiClient.baseUrl}/auth/google'));
+      ..loadRequest(Uri.parse('${ApiClient.baseUrl}/auth/google/redirect'));
   }
 
   void _handleToken(String raw) {

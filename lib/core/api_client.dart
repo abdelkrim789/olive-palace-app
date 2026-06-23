@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiClient {
-  static const baseUrl = 'http://api.olivepalace.net';
+  static const baseUrl = 'https://api.olivepalace.net';
   static Dio? _dio;
 
   static Dio get instance {
