@@ -4,6 +4,15 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme.dart';
 import '../../models/blog_model.dart';
 
+String _stripHtml(String html) => html
+    .replaceAll(RegExp(r'<[^>]*>'), ' ')
+    .replaceAll('&nbsp;', ' ')
+    .replaceAll('&amp;', '&')
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll(RegExp(r'\s+'), ' ')
+    .trim();
+
 class BlogDetailScreen extends StatelessWidget {
   final BlogModel blog;
   const BlogDetailScreen({super.key, required this.blog});
@@ -134,9 +143,9 @@ class BlogDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
 
-                  // Body
+                  // Body — strip HTML tags from rich-text editor content
                   Text(
-                    blog.content,
+                    _stripHtml(blog.content),
                     style: GoogleFonts.tajawal(
                       fontSize: 16,
                       color: AppColors.text,

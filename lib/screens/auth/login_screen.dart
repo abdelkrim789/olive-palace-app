@@ -33,9 +33,14 @@ class _LoginScreenState extends State<LoginScreen> {
     final result = await launchGoogleAuth(context);
     if (!mounted) return;
     if (result != null) {
-      await context.read<AuthProvider>().loginWithGoogle(result['token']!, result['user_type']!);
+      final ok = await context.read<AuthProvider>().loginWithGoogle(result['token']!, result['user_type']!);
+      if (!mounted) return;
+      if (ok) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        return;
+      }
     }
-    setState(() => _googleLoading = false);
+    if (mounted) setState(() => _googleLoading = false);
   }
 
   Future<void> _login() async {
@@ -44,8 +49,12 @@ class _LoginScreenState extends State<LoginScreen> {
     final auth    = context.read<AuthProvider>();
     final success = await auth.login(_emailCtrl.text.trim(), _passwordCtrl.text);
     if (!mounted) return;
+    if (success) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      return;
+    }
     setState(() => _loading = false);
-    if (!success && auth.error != null) {
+    if (auth.error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(auth.error!, style: GoogleFonts.tajawal()),

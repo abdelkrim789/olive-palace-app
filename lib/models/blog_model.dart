@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class BlogModel {
   final int id;
   final String title;
@@ -17,17 +19,38 @@ class BlogModel {
     this.createdAt,
   });
 
-  String get imageUrl =>
-      image != null ? 'http://api.olivepalace.net/storage/$image' : '';
+  // Backend stores images as JSON array string: '["/storage/blogs/1/image0.jpg"]'
+  static String? _parseFirstImage(dynamic raw) {
+    if (raw == null) return null;
+    try {
+      final list = raw is List ? raw : (jsonDecode(raw.toString()) as List);
+      return list.isNotEmpty ? list.first.toString() : null;
+    } catch (_) {
+      return null;
+    }
+  }
 
-  String get excerpt =>
-      content.length > 120 ? '${content.substring(0, 120)}...' : content;
+  // Path already starts with /storage/ so just prepend the base URL
+  String get imageUrl => image != null ? 'https://api.olivepalace.net$image' : '';
+
+  // Strip HTML tags for plain-text excerpt
+  String get excerpt {
+    final stripped = content
+        .replaceAll(RegExp(r'<[^>]*>'), ' ')
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    return stripped.length > 120 ? '${stripped.substring(0, 120)}...' : stripped;
+  }
 
   factory BlogModel.fromJson(Map<String, dynamic> j) => BlogModel(
         id: j['id'] ?? 0,
         title: j['title'] ?? '',
         content: j['content'] ?? '',
-        image: j['image'],
+        image: _parseFirstImage(j['images']),
         categoryName: j['category']?['name'],
         categoryId: j['category_id'],
         createdAt: j['created_at'] != null
