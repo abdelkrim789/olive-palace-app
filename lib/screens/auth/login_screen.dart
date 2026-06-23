@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
+import 'forgot_password_screen.dart';
 import 'google_auth_screen.dart' show launchGoogleAuth;
 import 'register_screen.dart';
 
@@ -177,7 +178,28 @@ class _LoginScreenState extends State<LoginScreen> {
                             validator: (v) =>
                                 v == null || v.isEmpty ? 'أدخل كلمة المرور' : null,
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 6),
+
+                          // Forgot password
+                          Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: TextButton(
+                              onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                              ),
+                              style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                              child: Text(
+                                'نسيت كلمة المرور؟',
+                                style: GoogleFonts.tajawal(
+                                  fontSize: 13,
+                                  color: AppColors.darkGreen,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
 
                           // Login button
                           SizedBox(

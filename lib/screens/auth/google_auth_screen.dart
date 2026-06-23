@@ -9,7 +9,7 @@ Future<Map<String, String>?> launchGoogleAuth(BuildContext context) async {
   try {
     final result = await FlutterWebAuth2.authenticate(
       url: '${ApiClient.baseUrl}/auth/google/redirect?mobile=1',
-      callbackUrlScheme: 'olive-palace',
+      callbackUrlScheme: 'olivepalace',
     );
     final uri = Uri.parse(result);
     final token    = uri.queryParameters['token'];

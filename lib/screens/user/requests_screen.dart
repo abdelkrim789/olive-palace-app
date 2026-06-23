@@ -6,6 +6,7 @@ import '../../core/theme.dart';
 import '../../models/request_model.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/status_badge.dart';
+import 'request_detail_screen.dart';
 import 'submit_request_screen.dart';
 
 class RequestsScreen extends StatefulWidget {
@@ -115,8 +116,20 @@ class _RequestsScreenState extends State<RequestsScreen> {
                     padding: const EdgeInsets.all(16),
                     itemCount: _requests.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 12),
-                    itemBuilder: (context, i) =>
-                        _RequestCard(req: _requests[i], onDelete: _delete, index: i),
+                    itemBuilder: (context, i) => _RequestCard(
+                      req: _requests[i],
+                      onDelete: _delete,
+                      index: i,
+                      onTap: (req) async {
+                        final updated = await Navigator.push<RequestModel>(
+                          context,
+                          MaterialPageRoute(builder: (_) => UserRequestDetailScreen(request: req)),
+                        );
+                        if (updated != null) {
+                          setState(() => _requests[i] = updated);
+                        }
+                      },
+                    ),
                   ),
                 ),
     );
@@ -126,12 +139,15 @@ class _RequestsScreenState extends State<RequestsScreen> {
 class _RequestCard extends StatelessWidget {
   final RequestModel req;
   final Future<void> Function(RequestModel) onDelete;
+  final void Function(RequestModel) onTap;
   final int index;
-  const _RequestCard({required this.req, required this.onDelete, required this.index});
+  const _RequestCard({required this.req, required this.onDelete, required this.onTap, required this.index});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GestureDetector(
+      onTap: () => onTap(req),
+      child: Container(
       decoration: cardDecoration(radius: 16),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -196,7 +212,7 @@ class _RequestCard extends StatelessWidget {
           ],
         ),
       ),
-    )
+    ))
         .animate(delay: Duration(milliseconds: index * 60))
         .fadeIn()
         .slideX(begin: 0.1);

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
+import 'profile_edit_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -99,6 +100,27 @@ class ProfileScreen extends StatelessWidget {
                         if (user?.phone != null)
                           _InfoTile(icon: Icons.phone_outlined, label: 'الهاتف', value: user?.phone),
                       ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Edit profile
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ProfileEditScreen()),
+                      ),
+                      icon: const Icon(Icons.edit_rounded, size: 18),
+                      label: Text('تعديل الملف الشخصي',
+                          style: GoogleFonts.tajawal(fontSize: 15, fontWeight: FontWeight.w600)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.darkGreen,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
